@@ -1,13 +1,17 @@
 FROM alpine:3.3
 
 EXPOSE 80
+EXPOSE 873
 
-RUN apk add --update nginx && \
+RUN apk add --update nginx-lua lua5.1-curl lua5.1-cjson rsync inotify-tools && \
     mkdir -p /tmp/nginx/client-body && \
         rm -rf /var/cache/apk/*
 
 VOLUME ["/data"]
 
-COPY . /
+COPY conf/rsyncd.conf /etc/rsyncd.conf
+COPY app /app
+COPY sites-enabled /sites-enabled
+COPY vendor /vendor
 
-CMD ["/usr/sbin/nginx", "-g", "daemon off;", "-p", "/data", "-c", "/nginx.conf"]
+CMD ["/app/daemon.sh"]
