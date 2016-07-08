@@ -14,6 +14,6 @@ do
         URL="a.imega.club"
         JSON=`echo $FILES | jq -Rc --arg url "$URL" 'split(" ")| {url:$url,files: .}'`
         curl -s -X POST -u $UUID:$PASS --data '$JSON' $SITE?mode=accept-file
-        #echo "curl -X POST -u $UUID:$PASS --data='$JSON' $SITE?mode=accept-file" >/proc/1/fd/1
+        echo -e `date`"\tteleport_manager: user $UUID send data='$JSON' to $SITE?mode=accept-file" >/proc/1/fd/1
     fi
 done
