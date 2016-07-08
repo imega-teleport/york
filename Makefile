@@ -23,7 +23,7 @@ data_dir:
 
 build/containers/teleport_manager:
 	@mkdir -p $(shell dirname $@)
-	docker run -d \
+	@docker run -d \
 		--name teleport_manager \
 		--link teleport_data:teleport_data \
 		--restart=always \
