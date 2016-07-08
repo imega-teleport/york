@@ -20,6 +20,7 @@ clean: stop
 
 data_dir:
 	@-mkdir -p $(CURDIR)/data/zip $(CURDIR)/data/unzip $(CURDIR)/data/parse $(CURDIR)/data/storage
+	@-chmod -R 777 $(CURDIR)/data
 
 build/containers/teleport_manager:
 	@mkdir -p $(shell dirname $@)
