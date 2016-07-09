@@ -1,11 +1,12 @@
-IMAGE = imegateleport/york
-CONTAINERS = imega_york
+TELEPORT_STORAGE = imegateleport/york
 PORT = -p 8187:80
-EXPECTED = "teleport_manager: user 9915e49a-4de1-41aa-9d7d-c9a687ec048d send data='{\"url\":\"a.imega.club\",\"files\":[\"/9915e49a-4de1-41aa-9d7d-c9a687ec048d/dump.sql\"]}' to a.imega.club?mode=accept-file"
-TELEPORT_MANAGER ?= imegateleport/york
+EXPECTED = "teleport_storage: user 9915e49a-4de1-41aa-9d7d-c9a687ec048d send data='{\"url\":\"a.imega.club\",\"files\":[\"/9915e49a-4de1-41aa-9d7d-c9a687ec048d/dump.sql\"]}' to a.imega.club?mode=accept-file"
 
 build:
-	@docker build -t $(IMAGE) .
+	@docker build -t $(TELEPORT_STORAGE) .
+
+push:
+	@docker push $(TELEPORT_STORAGE):latest
 
 get_containers:
 	$(eval CONTAINERS := $(subst build/containers/,,$(shell find build/containers -type f)))
@@ -22,18 +23,18 @@ data_dir:
 	@-mkdir -p $(CURDIR)/data/zip $(CURDIR)/data/unzip $(CURDIR)/data/parse $(CURDIR)/data/storage
 	@-chmod -R 777 $(CURDIR)/data
 
-build/containers/teleport_manager:
+build/containers/teleport_storage:
 	@mkdir -p $(shell dirname $@)
 	@docker run -d \
-		--name teleport_manager \
+		--name teleport_storage \
 		--link teleport_data:teleport_data \
 		--restart=always \
 		-v $(CURDIR)/data/storage:/data \
-		$(TELEPORT_MANAGER)
+		$(TELEPORT_STORAGE)
 	@touch $@
 
-build/containers/teleport_tester:
-	@cd tests;docker build -t imegateleport/manager_tester .
+build/containers/storage_tester:
+	@cd tests;docker build -t imegateleport/storage_tester .
 
 build/containers/teleport_data:
 	@mkdir -p $(shell dirname $@)
@@ -52,15 +53,15 @@ build/teleport_data_fixture: build/containers/teleport_data
 		sh -c "(echo -e \"SET user:9915e49a-4de1-41aa-9d7d-c9a687ec048d '{\042login\042:\0429915e49a-4de1-41aa-9d7d-c9a687ec048d\042,\042url\042:\042a.imega.club\042,\042email\042:\042teleport@imega.club\042,\042create\042:\042\042,\042pass\042:\042\042}'\";sleep 1) | nc teleport_data 6379"
 	@touch $@
 
-test: data_dir build/teleport_data_fixture build/containers/teleport_manager build/containers/teleport_tester
+test: data_dir build/teleport_data_fixture build/containers/teleport_storage build/containers/storage_tester
 	@docker run --rm \
-		--link teleport_manager:manager \
+		--link teleport_storage:storage \
 		-v $(CURDIR)/tests/fixtures:/data/storage \
-		imegateleport/manager_tester \
-		rsync --inplace -av /data/storage/9915e49a-4de1-41aa-9d7d-c9a687ec048d rsync://manager/data
+		imegateleport/storage_tester \
+		rsync --inplace -av /data/storage/9915e49a-4de1-41aa-9d7d-c9a687ec048d rsync://storage/data
 
 accert:
-	$(eval ACCERT = $(shell docker logs --tail=1 teleport_manager | sed 's/.*	//g'))
+	$(eval ACCERT = $(shell docker logs --tail=1 teleport_storage | sed 's/.*	//g'))
 	@if [ "$(ACCERT)" != "$(shell echo $(EXPECTED))" ];then \
 		exit 1; \
 	fi

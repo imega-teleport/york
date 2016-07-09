@@ -17,6 +17,6 @@ do
         FILES=$(find $DEST* -type f -print0 | xargs -0 md5sum | sed "s|/data/$UUID||g" | awk '{print $2":"$1}')
         JSON=`echo $FILES | jq -Rc --arg url "$URL" --arg uuid "$UUID" --arg uripath "$URIPATH" 'split(" ") | {url:$url,uuid:$uuid,uripath:$uripath,files:[ .[]|split(":")|{(.[0]) : .[1]} ]}'`
         curl -s -X POST -u $UUID:$PASS --data '$JSON' $SITE?mode=accept-file
-        echo -e `date`"\tteleport_manager: user $UUID send data='$JSON' to $SITE?mode=accept-file" >/proc/1/fd/1
+        echo -e `date`"\tteleport_storage: user $UUID send data='$JSON' to $SITE?mode=accept-file" >/proc/1/fd/1
     fi
 done
