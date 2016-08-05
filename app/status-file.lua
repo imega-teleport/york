@@ -13,6 +13,7 @@
 --
 -- You should have received a copy of the GNU General Public License
 -- along with this program. If not, see <http://www.gnu.org/licenses/>.
+local json = require "cjson"
 
 ngx.req.read_body()
 local body = ngx.req.get_body_data()
@@ -26,4 +27,4 @@ if not jsonErrorParse then
     ngx.exit(ngx.status)
 end
 
---data['file'];
+os.execute("rm -f /data/" .. uuid .. data['file'])

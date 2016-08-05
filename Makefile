@@ -1,5 +1,5 @@
 TELEPORT_STORAGE = imegateleport/york
-PORT = -p 8187:80
+PORT = -p 8185:80
 EXPECTED = "teleport_storage: user 9915e49a-4de1-41aa-9d7d-c9a687ec048d send data='{\"url\":\"a.imega.club\",\"files\":[\"/9915e49a-4de1-41aa-9d7d-c9a687ec048d/dump.sql\"]}' to a.imega.club?mode=accept-file"
 
 build:
@@ -30,6 +30,7 @@ build/containers/teleport_storage:
 		--link teleport_data:teleport_data \
 		--restart=always \
 		-v $(CURDIR)/data/storage:/data \
+		$(PORT) \
 		$(TELEPORT_STORAGE)
 	@touch $@
 

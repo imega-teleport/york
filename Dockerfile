@@ -3,7 +3,7 @@ FROM alpine:3.3
 EXPOSE 80
 EXPOSE 873
 
-RUN apk add --update nginx-lua lua5.1-curl lua5.1-cjson rsync inotify-tools jq && \
+RUN apk add --update nginx-lua lua5.1-curl lua5.1-cjson rsync inotify-tools jq lua5.1-filesystem lua5.1-inspect && \
     mkdir -p /tmp/nginx/client-body && \
         rm -rf /var/cache/apk/*
 
