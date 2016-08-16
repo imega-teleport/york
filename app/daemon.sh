@@ -6,7 +6,7 @@
 inotifywait -mr -e close_write --fromfile /app/wait-list.txt | while read DEST EVENT FILE
 do
     UUID=`echo $(basename "$DEST")`
-    if [ "dump.sql" = "$FILE" ]; then
+    #if [ "dump.sql" = "$FILE" ]; then
         PASS=$(echo `(printf "get auth:$UUID\r\n"; sleep 0.3) | nc teleport_data 6379` | awk '{print $2}')
         DATA=$(echo `(printf "get user:$UUID\r\n"; sleep 0.3) | nc teleport_data 6379` | awk '{print $2}')
         SITE=$(echo $DATA | jq '.url' | sed 's/\"//g')
@@ -18,5 +18,5 @@ do
         JSON=`echo $FILES | jq -Rc --arg url "$URL" --arg uuid "$UUID" --arg uripath "$URIPATH" 'split(" ") | {url:$url,uuid:$uuid,uripath:$uripath,files:[ .[]|split(":")|{(.[0]) : .[1]} ]}'`
         curl -s -X POST -u $UUID:$PASS --data '$JSON' $SITE?mode=accept-file
         echo -e `date`"\tteleport_storage: user $UUID send data='$JSON' to $SITE?mode=accept-file" >/proc/1/fd/1
-    fi
+    #fi
 done
