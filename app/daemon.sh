@@ -7,16 +7,13 @@ inotifywait -mr -e close_write --fromfile /app/wait-list.txt | while read DEST E
 do
     UUID=`echo $(basename "$DEST")`
     #if [ "dump.sql" = "$FILE" ]; then
-        PASS=$(echo `(printf "get auth:$UUID\r\n"; sleep 0.3) | nc teleport_data 6379` | awk '{print $2}')
-        DATA=$(echo `(printf "get user:$UUID\r\n"; sleep 0.3) | nc teleport_data 6379` | awk '{print $2}')
+        PASS=$(redis-cli -h teleport_data get "auth:$UUID")
+        DATA=$(redis-cli -h teleport_data get "user:$UUID")
         SITE=$(echo $DATA | jq '.url' | sed 's/\"//g')
-        #FILES=$(find $DEST* -type f -print | sed 's|/data||g')
         URL="a.imega.club"
         URIPATH="storage"
-        #JSON=`echo $FILES | jq -Rc --arg url "$URL" 'split(" ")| {url:$url,files: .}'`
         FILES=$(find $DEST* -type f -print0 | xargs -0 md5sum | sed "s|/data/$UUID||g" | awk '{print $2":"$1}')
         JSON=`echo $FILES | jq -Rc --arg url "$URL" --arg uuid "$UUID" --arg uripath "$URIPATH" 'split(" ") | {url:$url,uuid:$uuid,uripath:$uripath,files:[ .[]|split(":")|{(.[0]) : .[1]} ]}'`
-        curl -s -X POST -u $UUID:$PASS --data '$JSON' $SITE?mode=accept-file
-        #echo -e `date`"\tteleport_storage: user $UUID send data='$JSON' to $SITE?mode=accept-file" >/proc/1/fd/1
+        curl -s -X POST -u $UUID:$PASS --data $JSON $SITE/teleport?mode=accept-file
     #fi
 done

@@ -22,6 +22,8 @@ local filelist = {}
 local uuid = ngx.req.get_headers()["X-Teleport-uuid"]
 local path = "/data/" .. uuid .. "/"
 
+ngx.eof()
+
 --function find(path)
 --    ngx.say(inspect(lfs))
 --    for file in lfs.dir(path) do
