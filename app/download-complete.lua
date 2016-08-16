@@ -16,13 +16,15 @@
 local lfs  = require "lfs"
 local json = require "cjson"
 local inspect = require "inspect"
+local curl = require "lcurl"
+local md5 = require "md5"
 
 local filelist = {}
 
 local uuid = ngx.req.get_headers()["X-Teleport-uuid"]
 local path = "/data/" .. uuid .. "/"
 
-ngx.eof()
+--ngx.eof()
 
 --function find(path)
 --    ngx.say(inspect(lfs))
@@ -66,12 +68,16 @@ function dirtree(dir)
 
     return coroutine.wrap(function() yieldtree(dir) end)
 end
+ngx.say("=====" .. "md5sum 60b725f10c9c85c70d97880dfe8191b3  /data/9915e49a-4de1-41aa-9d7d-c9a687ec048d/dump.sql")
+ngx.say(md5.sumhexa("dump.sql\na"))
 
 for filename, attr in dirtree(path) do
-    ngx.say(inspect(filename))
+    local file = io.open(filename, "r")
+    io.input(file)
+    local hash = md5.sumhexa(io.read())
+    io.close(file)
+    filelist[string.sub(filename,string.len(path))] = hash
 end
-
-
 
 ngx.say(json.encode({
     url = "a.imega.club",
@@ -79,3 +85,32 @@ ngx.say(json.encode({
     uripath = "storage",
     files = filelist,
 }))
+
+
+--local credentials = base64.encode(validData['login'] .. ":" .. res)
+--
+--local site = curl.easy()
+--:setopt_url(validData['url'] .. '/teleport')
+--:setopt_httpheader{
+--    "Authorization: Basic " .. credentials,
+--}
+--
+--local perform = function ()
+--    site:perform()
+--end
+--
+--if not pcall(perform) then
+--    ngx.status = ngx.HTTP_BAD_REQUEST
+--    ngx.say("400 HTTP_BAD_REQUEST")
+--    ngx.exit(ngx.status)
+--end
+--
+--local codeResponse = site:getinfo_response_code()
+--
+--site:close()
+--
+--if not ngx.HTTP_OK == codeResponse then
+--    ngx.status = ngx.HTTP_BAD_REQUEST
+--    ngx.say("400 HTTP_BAD_REQUEST")
+--    ngx.exit(ngx.status)
+--end

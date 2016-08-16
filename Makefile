@@ -30,6 +30,7 @@ build/containers/teleport_storage:
 		--link teleport_data:teleport_data \
 		--restart=always \
 		-v $(CURDIR)/data/storage:/data \
+		-v $(CURDIR)/app:/app \
 		$(PORT) \
 		$(TELEPORT_STORAGE)
 	@touch $@
