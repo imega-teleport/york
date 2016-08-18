@@ -38,33 +38,33 @@ local path = "/data/" .. uuid .. "/"
 
 ngx.eof()
 
-function dirtree(dir)
+function dirtree(dir, recursive)
     assert(dir and dir ~= "", "directory parameter is missing or empty")
     if string.sub(dir, -1) == "/" then
         dir=string.sub(dir, 1, -2)
     end
 
-    local function yieldtree(dir)
+    local function yieldtree(dir, recursive)
         for entry in lfs.dir(dir) do
             if entry ~= "." and entry ~= ".." then
                 entry=dir.."/"..entry
-                local attr=lfs.attributes(entry)
+                local attr = lfs.attributes(entry)
                 if attr.mode == "file" then
                     coroutine.yield(entry,attr)
                 end
-                if attr.mode == "directory" then
-                    yieldtree(entry)
+                if true == recursive and attr.mode == "directory" then
+                    yieldtree(entry, true)
                 end
             end
         end
     end
 
-    return coroutine.wrap(function() yieldtree(dir) end)
+    return coroutine.wrap(function() yieldtree(dir, recursive) end)
 end
 
 local filelist = {}
 
-for filename, attr in dirtree(path) do
+for filename, attr in dirtree(path, true) do
     local hash
     local item = {}
     local f = io.open(filename, "r")
@@ -77,18 +77,12 @@ for filename, attr in dirtree(path) do
     table.insert(filelist, item)
 end
 
-if next(filelist) == nil then
-    ngx.status = ngx.HTTP_OK
-    ngx.say("200 HTTP_OK");
-    ngx.exit(ngx.status)
-end
-
-local sendData = json.encode({
+local sendData = {
     url     = "http://a.imega.club",
     uuid    = uuid,
     uripath = "storage",
     files   = filelist,
-})
+}
 
 local db = redis:new()
 db:set_timeout(1000)
@@ -115,14 +109,30 @@ end
 
 local credentials = base64.encode(data['login'] .. ":" .. data['pass'])
 
+local mode = "accept-file"
+
+if next(filelist) == nil then
+    mode = "import"
+    local path = "/data/x-" .. uuid .. "/"
+    local ret = dirtree(path, false)
+    local firstFile = ret()
+    if strlib.empty(firstFile) then
+        ngx.status = ngx.HTTP_BAD_REQUEST
+        ngx.say("400 HTTP_BAD_REQUEST");
+        ngx.exit(ngx.status)
+    else
+        sendData['file'] = string.sub(firstFile,string.len(path) + 1)
+    end
+end
+
 local ret = {}
 local site = curl.easy()
-    :setopt_url(data['url'] .. '/teleport?mode=accept-file')
+    :setopt_url(data['url'] .. '/teleport?mode=' .. mode)
     :setopt_httpheader{
         "Authorization: Basic " .. credentials,
         'Content-Type: application/json',
     }
-    :setopt_postfields(sendData)
+    :setopt_postfields(json.encode(sendData))
     :setopt_writefunction(
         function (response)
             table.insert(ret, response)
