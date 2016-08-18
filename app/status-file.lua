@@ -13,7 +13,15 @@
 --
 -- You should have received a copy of the GNU General Public License
 -- along with this program. If not, see <http://www.gnu.org/licenses/>.
-local json = require "cjson"
+local json   = require "cjson"
+local strlib = require "imega.string"
+
+local headers = ngx.req.get_headers()
+if strlib.empty(headers["X-Teleport-uuid"]) then
+    ngx.status = ngx.HTTP_BAD_REQUEST
+    ngx.say("400 HTTP_BAD_REQUEST");
+    ngx.exit(ngx.status)
+end
 
 ngx.req.read_body()
 local body = ngx.req.get_body_data()
@@ -27,4 +35,6 @@ if not jsonErrorParse then
     ngx.exit(ngx.status)
 end
 
+os.execute("if [ ! -d /data/x-" .. uuid .. " ];then mkdir -p /data/x-" .. uuid .. "; fi")
+os.execute("cp -f /data/" .. uuid .. data['file'] .. " /data/x-" .. uuid .. data['file'])
 os.execute("rm -f /data/" .. uuid .. data['file'])
