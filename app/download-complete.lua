@@ -13,37 +13,30 @@
 --
 -- You should have received a copy of the GNU General Public License
 -- along with this program. If not, see <http://www.gnu.org/licenses/>.
-local lfs  = require "lfs"
-local json = require "cjson"
-local inspect = require "inspect"
-local curl = require "lcurl"
-local md5 = require "md5"
+local lfs    = require "lfs"
+local json   = require "cjson"
+local strlib = require "imega.string"
+local curl   = require "lcurl"
+local md5    = require "md5"
+local redis  = require "resty.redis"
+local base64 = require "kloss.base64"
 
-local filelist = {}
+--local inspect = require "inspect"
+
+local headers = ngx.req.get_headers()
+if strlib.empty(headers["X-Teleport-uuid"]) then
+    ngx.status = ngx.HTTP_BAD_REQUEST
+    ngx.say("400 HTTP_BAD_REQUEST");
+    ngx.exit(ngx.status)
+end
+
+local redis_ip   = ngx.var.redis_ip
+local redis_port = ngx.var.redis_port
 
 local uuid = ngx.req.get_headers()["X-Teleport-uuid"]
 local path = "/data/" .. uuid .. "/"
 
---ngx.eof()
-
---function find(path)
---    ngx.say(inspect(lfs))
---    for file in lfs.dir(path) do
---        if file ~= "." and file ~= ".." then
---            local cpath = path..'/'..file
---            local attr = lfs.attributes(cpath)
---            if attr.mode == "directory" then
---                find(rpath)
---            else
---                filelist["/" .. file] = "md5"
---            end
---
---            --table.insert(filelist, {file = "md5" })
---        end
---    end
---end
---
---find(path)
+ngx.eof()
 
 function dirtree(dir)
     assert(dir and dir ~= "", "directory parameter is missing or empty")
@@ -68,49 +61,86 @@ function dirtree(dir)
 
     return coroutine.wrap(function() yieldtree(dir) end)
 end
-ngx.say("=====" .. "md5sum 60b725f10c9c85c70d97880dfe8191b3  /data/9915e49a-4de1-41aa-9d7d-c9a687ec048d/dump.sql")
-ngx.say(md5.sumhexa("dump.sql\na"))
+
+local filelist = {}
 
 for filename, attr in dirtree(path) do
-    local file = io.open(filename, "r")
-    io.input(file)
-    local hash = md5.sumhexa(io.read())
-    io.close(file)
-    filelist[string.sub(filename,string.len(path))] = hash
+    local hash
+    local item = {}
+    local f = io.open(filename, "r")
+    if f then
+        local data = f:read('*all')
+        f:close()
+        hash = md5.sumhexa(data)
+    end
+    item[string.sub(filename,string.len(path))] = hash
+    table.insert(filelist, item)
 end
 
-ngx.say(json.encode({
-    url = "a.imega.club",
-    uuid = uuid,
+if next(filelist) == nil then
+    ngx.status = ngx.HTTP_OK
+    ngx.say("200 HTTP_OK");
+    ngx.exit(ngx.status)
+end
+
+local sendData = json.encode({
+    url     = "http://a.imega.club",
+    uuid    = uuid,
     uripath = "storage",
-    files = filelist,
-}))
+    files   = filelist,
+})
 
+local db = redis:new()
+db:set_timeout(1000)
+local ok, err = db:connect(redis_ip, redis_port)
+if not ok then
+    ngx.status = ngx.HTTP_INTERNAL_SERVER_ERROR
+    ngx.say("500 HTTP_INTERNAL_SERVER_ERROR")
+    ngx.exit(ngx.status)
+end
 
---local credentials = base64.encode(validData['login'] .. ":" .. res)
---
---local site = curl.easy()
---:setopt_url(validData['url'] .. '/teleport')
---:setopt_httpheader{
---    "Authorization: Basic " .. credentials,
---}
---
---local perform = function ()
---    site:perform()
---end
---
---if not pcall(perform) then
---    ngx.status = ngx.HTTP_BAD_REQUEST
---    ngx.say("400 HTTP_BAD_REQUEST")
---    ngx.exit(ngx.status)
---end
---
+local userData, err = db:get("user:" .. uuid)
+if "string" ~= type(userData) then
+    ngx.status = ngx.HTTP_NOT_FOUND
+    ngx.say("404 HTTP_NOT_FOUND")
+    ngx.exit(ngx.status)
+end
+
+local jsonErrorParse, data = pcall(json.decode, userData)
+if not jsonErrorParse then
+    ngx.status = ngx.HTTP_INTERNAL_SERVER_ERROR
+    ngx.say("500 HTTP_INTERNAL_SERVER_ERROR")
+    ngx.exit(ngx.status)
+end
+
+local credentials = base64.encode(data['login'] .. ":" .. data['pass'])
+
+local ret = {}
+local site = curl.easy()
+    :setopt_url(data['url'] .. '/teleport?mode=accept-file')
+    :setopt_httpheader{
+        "Authorization: Basic " .. credentials,
+        'Content-Type: application/json',
+    }
+    :setopt_postfields(sendData)
+    :setopt_writefunction(
+        function (response)
+            table.insert(ret, response)
+        end
+    )
+
+local perform = function ()
+    assert(site:perform())
+end
+
+if not pcall(perform) then
+    ngx.status = ngx.HTTP_BAD_REQUEST
+    ngx.say("400 HTTP_BAD_REQUEST")
+    ngx.exit(ngx.status)
+end
+
 --local codeResponse = site:getinfo_response_code()
---
---site:close()
---
---if not ngx.HTTP_OK == codeResponse then
---    ngx.status = ngx.HTTP_BAD_REQUEST
---    ngx.say("400 HTTP_BAD_REQUEST")
---    ngx.exit(ngx.status)
---end
+--ngx.say(codeResponse)
+--ngx.say(inspect(ret))
+
+site:close()

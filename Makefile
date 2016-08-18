@@ -1,4 +1,6 @@
 TELEPORT_STORAGE = imegateleport/york
+TELEPORT_DATA_PORT ?= 6379
+TELEPORT_DATA_IP ?=
 PORT = -p 8185:80
 EXPECTED = "teleport_storage: user 9915e49a-4de1-41aa-9d7d-c9a687ec048d send data='{\"url\":\"a.imega.club\",\"files\":[\"/9915e49a-4de1-41aa-9d7d-c9a687ec048d/dump.sql\"]}' to a.imega.club?mode=accept-file"
 
@@ -23,12 +25,20 @@ data_dir:
 	@-mkdir -p $(CURDIR)/data/zip $(CURDIR)/data/unzip $(CURDIR)/data/parse $(CURDIR)/data/storage
 	@-chmod -R 777 $(CURDIR)/data
 
+discovery_data:
+	@while [ "`docker inspect -f {{.State.Running}} teleport_data`" != "true" ]; do \
+		echo "wait db"; sleep 0.3; \
+	done
+	$(eval TELEPORT_DATA_IP = $(shell docker inspect --format '{{ .NetworkSettings.IPAddress }}' teleport_data))
+
 build/containers/teleport_storage:
 	@mkdir -p $(shell dirname $@)
 	@docker run -d \
 		--name teleport_storage \
 		--link teleport_data:teleport_data \
 		--restart=always \
+		--env REDIS_IP=$(TELEPORT_DATA_IP) \
+		--env REDIS_PORT=$(TELEPORT_DATA_PORT) \
 		-v $(CURDIR)/data/storage:/data \
 		-v $(CURDIR)/app:/app \
 		$(PORT) \
@@ -43,12 +53,8 @@ build/containers/teleport_data:
 	@docker run -d --name teleport_data leanlabs/redis
 	@touch $@
 
-build/teleport_data_fixture: build/containers/teleport_data
+build/teleport_data_fixture: build/containers/teleport_data discovery_data
 	@mkdir -p $(shell dirname $@)
-	@while [ "`docker inspect -f {{.State.Running}} teleport_data`" != "true" ]; do \
-		echo "wait db"; sleep 0.3; \
-	done
-	$(eval REDIS_IP = $(shell docker inspect --format '{{ .NetworkSettings.IPAddress }}' teleport_data))
 	@docker exec teleport_data \
 		sh -c '(echo "SET auth:9915e49a-4de1-41aa-9d7d-c9a687ec048d 8c279a62-88de-4d86-9b65-527c81ae767a";sleep 1) | redis-cli --pipe'
 	@docker run --rm --link teleport_data:teleport_data alpine:3.3 \
