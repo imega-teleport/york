@@ -31,7 +31,7 @@ if strlib.empty(headers["X-Teleport-uuid"]) then
 end
 
 local redis_ip   = ngx.var.redis_ip
-local redis_port = ngx.var.redis_port
+local redis_port = tonumber(ngx.var.redis_port)
 
 local uuid = ngx.req.get_headers()["X-Teleport-uuid"]
 local path = "/data/" .. uuid .. "/"
