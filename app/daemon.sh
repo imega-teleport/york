@@ -6,8 +6,8 @@
 inotifywait -mr -e close_write --fromfile /app/wait-list.txt | while read DEST EVENT FILE
 do
     UUID=`echo $(basename "$DEST")`
-    #if [ "dump.sql" = "$FILE" ]; then
-        PASS=$(redis-cli -h teleport_data get "auth:$UUID")
+    PASS=$(redis-cli -h teleport_data get "auth:$UUID")
+    if [ ! -z "$PASS" -a "$PASS" != " " ]; then
         DATA=$(redis-cli -h teleport_data get "user:$UUID")
         SITE=$(echo $DATA | jq '.url' | sed 's/\"//g')
         URL="http://a.imega.club"
@@ -15,5 +15,5 @@ do
         FILES=$(find $DEST* -type f -print0 | xargs -0 md5sum | sed "s|/data/$UUID||g" | awk '{print $2":"$1}')
         JSON=`echo $FILES | jq -Rc --arg url "$URL" --arg uuid "$UUID" --arg uripath "$URIPATH" 'split(" ") | {url:$url,uuid:$uuid,uripath:$uripath,files:[ .[]|split(":")|{(.[0]) : .[1]} ]}'`
         curl -s -X POST -u $UUID:$PASS --data $JSON $SITE/teleport?mode=accept-file
-    #fi
+    fi
 done
