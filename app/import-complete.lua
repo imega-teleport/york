@@ -98,8 +98,41 @@ local mode = "import"
 local path = "/data/x-" .. uuid .. "/"
 local ret = dirtree(path, false)
 local firstFile = ret()
-if strlib.empty(firstFile) then
+
+
+local taskData, err = db:get("task:" .. uuid)
+if "string" ~= type(taskData) then
+    ngx.status = ngx.HTTP_NOT_FOUND
+    ngx.say("404 HTTP_NOT_FOUND")
+    ngx.exit(ngx.status)
+end
+
+local jsonErrorParse, task = pcall(json.decode, taskData)
+if not jsonErrorParse then
+    ngx.status = ngx.HTTP_INTERNAL_SERVER_ERROR
+    ngx.say("500 HTTP_INTERNAL_SERVER_ERROR")
+    ngx.exit(ngx.status)
+end
+
+if false == task['sendCustomScript'] and strlib.empty(firstFile) then
     os.execute("cp -f /data/custom/" .. data['customScript'] .. " /data/" .. uuid .. "/custom.sql")
+
+    task['sendCustomScript'] = true
+
+    local jsonErrorParse, taskData = pcall(json.encode, task)
+    if not jsonErrorParse then
+        ngx.status = ngx.HTTP_INTERNAL_SERVER_ERROR
+        ngx.say("500 HTTP_INTERNAL_SERVER_ERROR")
+        ngx.exit(ngx.status)
+    end
+
+    local ok, err = db:set("task:" .. uuid, taskData)
+    if not ok then
+        ngx.status = ngx.HTTP_INTERNAL_SERVER_ERROR
+        ngx.say("500 HTTP_INTERNAL_SERVER_ERROR")
+        ngx.exit(ngx.status)
+    end
+
     ngx.status = ngx.HTTP_OK
     ngx.say("200 HTTP_OK")
     ngx.exit(ngx.status)
