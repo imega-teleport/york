@@ -50,13 +50,13 @@ build/containers/storage_tester:
 
 build/containers/teleport_data:
 	@mkdir -p $(shell dirname $@)
-	@docker run -d --name teleport_data leanlabs/redis
+	@docker run -d --name teleport_data imega/redis
 	@touch $@
 
 build/teleport_data_fixture: build/containers/teleport_data discovery_data
 	@mkdir -p $(shell dirname $@)
-	@docker exec teleport_data \
-		sh -c '(echo "SET auth:9915e49a-4de1-41aa-9d7d-c9a687ec048d 8c279a62-88de-4d86-9b65-527c81ae767a";sleep 1) | redis-cli --pipe'
+	@docker run --rm --link teleport_data:teleport_data alpine:3.3 \
+		sh -c '(echo "SET auth:9915e49a-4de1-41aa-9d7d-c9a687ec048d 8c279a62-88de-4d86-9b65-527c81ae767a";sleep 1) | nc teleport_data 6379'
 	@docker run --rm --link teleport_data:teleport_data alpine:3.3 \
 		sh -c "(echo -e \"SET user:9915e49a-4de1-41aa-9d7d-c9a687ec048d '{\042login\042:\0429915e49a-4de1-41aa-9d7d-c9a687ec048d\042,\042url\042:\042a.imega.club\042,\042email\042:\042teleport@imega.club\042,\042create\042:\042\042,\042pass\042:\042\042}'\";sleep 1) | nc teleport_data 6379"
 	@touch $@
