@@ -14,6 +14,7 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+local json = require "cjson"
 local uuid = require "tieske.uuid"
 
 --
@@ -103,9 +104,34 @@ local function getLogin(db, token)
     return result
 end
 
+--
+-- Fetch user
+--
+-- @param db redis
+-- @param uuid
+--
+-- @return table
+--
+local function getUser(db, uuid)
+    local result = {}
+
+    local userData, err = db:get("user:" .. uuid)
+    if "string" ~= type(userData) then
+        return result
+    end
+
+    local jsonError, result = pcall(json.decode, userData)
+    if not jsonError then
+        return result
+    end
+
+    return result
+end
+
 return {
     authenticate = auth,
     getToken     = getToken,
     checkToken   = checkToken,
-    getLogin     = getLogin
+    getLogin     = getLogin,
+    getUser      = getUser,
 }

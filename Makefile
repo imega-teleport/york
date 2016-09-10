@@ -61,7 +61,7 @@ build/teleport_data_fixture: build/containers/teleport_data discovery_data
 		sh -c "(echo -e \"SET user:9915e49a-4de1-41aa-9d7d-c9a687ec048d '{\042login\042:\0429915e49a-4de1-41aa-9d7d-c9a687ec048d\042,\042url\042:\042a.imega.club\042,\042email\042:\042teleport@imega.club\042,\042create\042:\042\042,\042pass\042:\042\042}'\";sleep 1) | nc teleport_data 6379"
 	@touch $@
 
-test: data_dir build/teleport_data_fixture build/containers/teleport_storage build/containers/storage_tester
+test-old: data_dir build/teleport_data_fixture build/containers/teleport_storage build/containers/storage_tester
 	@docker run --rm \
 		--link teleport_storage:storage \
 		-v $(CURDIR)/tests/fixtures:/data/storage \
@@ -73,5 +73,8 @@ accert:
 	@if [ "$(ACCERT)" != "$(shell echo $(EXPECTED))" ];then \
 		exit 1; \
 	fi
+
+test: data_dir build/teleport_data_fixture build/containers/teleport_storage
+	cd tests/download-complete; make test
 
 .PHONY: build
