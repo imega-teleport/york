@@ -23,10 +23,11 @@ assertTrue() {
     fi
 }
 
-testUuidInHeader() {
-    ACTUAL=$(curl --write-out %{http_code} --silent --output /dev/null -H "X-Teleport-uuid: 9915e49a-4de1-41aa-9d7d-c9a687ec048d" http://$URL/download-complete)
-
-    assertTrue 200 $ACTUAL "$FUNCNAME"
+waitAnyFile() {
+    until [ $(ls -A $1) ]
+    do
+        sleep 0.3
+    done
 }
 
 testFailWitoutUuidInHeader() {
@@ -41,10 +42,22 @@ testFailUuidInHeader() {
     assertTrue 404 $ACTUAL "$FUNCNAME"
 }
 
+testRequestDownloadFiles() {
+    rm -rf /actual/out/*
+    mkdir -p /actual/storage/9915e49a-4de1-41aa-9d7d-c9a687ec048d
+    touch /actual/storage/9915e49a-4de1-41aa-9d7d-c9a687ec048d/dump1.sql
+    touch /actual/storage/9915e49a-4de1-41aa-9d7d-c9a687ec048d/dump2.sql
 
-testUuidInHeader
+    curl --silent -H "X-Teleport-uuid: 9915e49a-4de1-41aa-9d7d-c9a687ec048d" http://$URL/download-complete
+    waitAnyFile /actual/out/
+    ACTUAL=$(diff -wbB /actual/out/* /fixtures/download-files.txt;echo $?)
+
+    assertTrue 0 $ACTUAL "$FUNCNAME"
+}
+
 testFailWitoutUuidInHeader
 testFailUuidInHeader
+testRequestDownloadFiles
 
 printf '%.0s-' {1..80}
 echo

@@ -23,7 +23,6 @@ clean: stop
 
 data_dir:
 	@-mkdir -p $(CURDIR)/data/zip $(CURDIR)/data/unzip $(CURDIR)/data/parse $(CURDIR)/data/storage
-	@-chmod -R 777 $(CURDIR)/data
 
 discovery_data:
 	@while [ "`docker inspect -f {{.State.Running}} teleport_data`" != "true" ]; do \
@@ -36,6 +35,7 @@ build/containers/teleport_storage:
 	@docker run -d \
 		--name teleport_storage \
 		--link teleport_data:teleport_data \
+		--link mock-server:mock-server \
 		--restart=always \
 		--env REDIS_IP=$(TELEPORT_DATA_IP) \
 		--env REDIS_PORT=$(TELEPORT_DATA_PORT) \
@@ -58,7 +58,13 @@ build/teleport_data_fixture: build/containers/teleport_data discovery_data
 	@docker run --rm --link teleport_data:teleport_data alpine:3.3 \
 		sh -c '(echo "SET auth:9915e49a-4de1-41aa-9d7d-c9a687ec048d 8c279a62-88de-4d86-9b65-527c81ae767a";sleep 1) | nc teleport_data 6379'
 	@docker run --rm --link teleport_data:teleport_data alpine:3.3 \
-		sh -c "(echo -e \"SET user:9915e49a-4de1-41aa-9d7d-c9a687ec048d '{\042login\042:\0429915e49a-4de1-41aa-9d7d-c9a687ec048d\042,\042url\042:\042a.imega.club\042,\042email\042:\042teleport@imega.club\042,\042create\042:\042\042,\042pass\042:\042\042}'\";sleep 1) | nc teleport_data 6379"
+		sh -c "(echo -e \"SET user:9915e49a-4de1-41aa-9d7d-c9a687ec048d '{\042login\042:\0429915e49a-4de1-41aa-9d7d-c9a687ec048d\042,\042url\042:\042mock-server\042,\042email\042:\042teleport@imega.club\042,\042create\042:\042\042,\042pass\042:\042\042}'\";sleep 1) | nc teleport_data 6379"
+	@touch $@
+
+build/containers/mock-server:
+	@mkdir -p $(shell dirname $@)
+	mkdir -p $(CURDIR)/data/out
+	docker run -d --name mock-server -v $(CURDIR)/data/out:/data imega/nginx-stub
 	@touch $@
 
 test-old: data_dir build/teleport_data_fixture build/containers/teleport_storage build/containers/storage_tester
@@ -74,7 +80,7 @@ accert:
 		exit 1; \
 	fi
 
-test: data_dir build/teleport_data_fixture build/containers/teleport_storage
-	cd tests/download-complete; make test
+test: data_dir build/containers/mock-server build/teleport_data_fixture build/containers/teleport_storage
+	cd tests/download-complete; make test DATA_DIR=$(CURDIR)/data
 
 .PHONY: build
