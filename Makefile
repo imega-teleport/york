@@ -81,6 +81,6 @@ accert:
 	fi
 
 test: data_dir build/containers/mock-server build/teleport_data_fixture build/containers/teleport_storage
-	cd tests/download-complete; make test DATA_DIR=$(CURDIR)/data
+	make test DATA_DIR=$(CURDIR)/data -C tests/download-complete
 
 .PHONY: build
