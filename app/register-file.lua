@@ -1,3 +1,4 @@
+#!/usr/bin/env luajit
 --
 -- Copyright (C) 2015 iMega ltd Dmitry Gavriloff (email: info@imega.ru),
 --
@@ -14,27 +15,50 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this program. If not, see <http://www.gnu.org/licenses/>.
 
---no field package.preload['imega.string']
---no file './imega/string.lua'
---no file '/usr/share/luajit-2.0.4/imega/string.lua'
---no file '/usr/local/share/lua/5.1/imega/string.lua'
---no file '/usr/local/share/lua/5.1/imega/string/init.lua'
---no file '/usr/share/lua/5.1/imega/string.lua'
---no file '/usr/share/lua/5.1/imega/string/init.lua'
---no file './imega/string.so'
---no file '/usr/local/lib/lua/5.1/imega/string.so'
---no file '/usr/lib/lua/5.1/imega/string.so'
---no file '/usr/local/lib/lua/5.1/loadall.so'
---no file './imega.so'
---no file '/usr/local/lib/lua/5.1/imega.so'
---no file '/usr/lib/lua/5.1/imega.so'
---no file '/usr/local/lib/lua/5.1/loadall.so'
-
 local json  = require "cjson"
-local redis = require "resty.redis"
+local redis = require "redis"
+local md5   = require "md5"
+local inspect = require "inspect"
 
 local redis_ip   = arg[1]
 local redis_port = tonumber(arg[2])
 local uuid       = arg[3]
-local file       = arg[4]
+local path       = arg[4]
+local filename   = arg[5]
 
+local ok, client = pcall(redis.connect, redis_ip, redis_port)
+if not ok then
+    print(client)
+    os.exit(1)
+end
+
+local jsonErr, files = pcall(
+    json.decode,
+    client:get('user:files:' .. uuid)
+)
+if not jsonErr then
+    files = {}
+end
+
+print(inspect(files))
+os.exit(1)
+
+local hash
+local item = {}
+print(path .. '/' .. uuid .. '/' .. filename)
+local f = io.open(path .. '/' .. uuid .. '/' .. filename, "r")
+if f then
+    local data = f:read('*all')
+    f:close()
+    hash = md5.sumhexa(data)
+end
+
+item[filename] = hash
+table.insert(files, item)
+
+local jsonErr, data = pcall(json.encode, files)
+if not jsonErr then
+    os.exit(1)
+end
+
+client:set('user:files:' .. uuid, data)
