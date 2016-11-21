@@ -18,7 +18,6 @@
 local json  = require "cjson"
 local redis = require "redis"
 local md5   = require "md5"
-local inspect = require "inspect"
 
 local redis_ip   = arg[1]
 local redis_port = tonumber(arg[2])
@@ -39,9 +38,6 @@ local jsonErr, files = pcall(
 if not jsonErr then
     files = {}
 end
-
-print(inspect(files))
-os.exit(1)
 
 local hash
 local item = {}
