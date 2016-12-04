@@ -80,7 +80,10 @@ accert:
 		exit 1; \
 	fi
 
-test: data_dir build/containers/mock-server build/teleport_data_fixture build/containers/teleport_storage
+test1: data_dir build/containers/mock-server build/teleport_data_fixture build/containers/teleport_storage
 	make test DATA_DIR=$(CURDIR)/data -C tests/download-complete
+
+test:
+	docker run --rm -it -v $(CURDIR):/data imega/busted --lpath=/data/app/?.lua tests/
 
 .PHONY: build
