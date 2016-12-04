@@ -1,5 +1,3 @@
-local i = require "inspect"
-
 describe("Отправление списка доступных файлов для скачивания", function()
     local client,     mockClient,
           redis,      mockRedis,

@@ -1,7 +1,5 @@
 #!/usr/bin/env luajit
 
-local i = require "inspect"
-
 local json   = require "cjson"
 local redis  = require "redis"
 local base64 = require "kloss.base64"
