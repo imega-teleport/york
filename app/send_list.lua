@@ -1,5 +1,8 @@
 #!/usr/bin/env luajit
 
+local i = require "inspect"
+
+local json  = require "cjson"
 local redis = require "redis"
 
 local redis_ip   = arg[1]
@@ -13,6 +16,12 @@ end
 
 local userData, err = client:get("user:" .. uuid)
 if "string" ~= type(userData) then
-    error("User NOT_FOUND:")
+    error("User not found")
 end
+
+local jsonErr, data = pcall(json.decode, userData)
+if not jsonErr then
+    error("fail json decode")
+end
+
 
