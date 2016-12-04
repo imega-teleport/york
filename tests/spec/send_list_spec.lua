@@ -1,133 +1,83 @@
 local i = require "inspect"
 
-_G.arg = {
-    "127.0.0.1",
-    "6379",
-    "9915e49a-4de1-41aa-9d7d-c9a687ec048d"
-}
-
 describe("Отправление списка доступных файлов для скачивания", function()
+    local client, mockClient,
+          redis,  mockRedis,
+          cjson,  mockCjson
 
-    local userData = "{\"login\":\"9915e49a-4de1-41aa-9d7d-c9a687ec048d\",\"url\":\"mock-server\",\"email\":\"info@example.com\",\"create\":\"\",\"pass\":\"\"}"
+    before_each(function()
+        _G.arg = {
+            "127.0.0.1",
+            "6379",
+            "9915e49a-4de1-41aa-9d7d-c9a687ec048d"
+        }
 
-    it("Эталонные условия, база - ok, плагин - ok", function()
-        local client = {
-            get = function(value)
-                return userData
-            end,
+        client = {
+            get = function(value) end,
         }
-        local redis = {
-            connect = function(ip, port)
-                return client
-            end
+        redis = {
+            connect = function(ip, port) end
         }
-        local mockRedis = mock(redis)
-        local mockClient = mock(client)
+        mockRedis = mock.new(redis, true)
+        mockClient = mock.new(client, true)
+
+        mockClient.get.on_call_with(mockClient).returns(
+            function() return nil, "not found" end)
+
+        mockRedis.connect.returns(nil, "not init")
+        mockRedis.connect.on_call_with("127.0.0.1", 6379).returns(mockClient)
 
         package.loaded.redis = nil
         package.preload['redis'] = function ()
-            return redis
+            return mockRedis
         end
 
-        local cjson = {
-            decode = function(value)
-                return {
-                    login  = "9915e49a-4de1-41aa-9d7d-c9a687ec048d",
-                    url    = "mock-server",
-                    email  = "info@example.com",
-                    create = "",
-                    pass   = "",
-                }
-            end
+        cjson = {
+            decode = function(value) end,
         }
-        local mockCjson = mock(cjson)
+        mockCjson = mock.new(cjson, true)
         package.loaded.cjson = nil
         package.preload['cjson'] = function ()
-            return cjson
+            return mockCjson
         end
 
-        local send_list = require 'send_list'
+        package.loaded.send_list = nil
+    end)
 
-        assert.spy(mockRedis.connect).was.called_with("127.0.0.1", 6379)
-        assert.spy(mockClient.get).was.called_with(mockClient, "user:9915e49a-4de1-41aa-9d7d-c9a687ec048d")
-        assert.spy(mockCjson.decode).was.called_with(userData)
+   local userData = "{\"login\":\"9915e49a-4de1-41aa-9d7d-c9a687ec048d\",\"url\":\"mock-server\",\"email\":\"info@example.com\",\"create\":\"\",\"pass\":\"\"}"
+
+    it("Эталонные условия, база - ok, плагин - ok", function()
+        mockClient.get.on_call_with(mockClient, "user:9915e49a-4de1-41aa-9d7d-c9a687ec048d").returns(userData)
+        mockCjson.decode.on_call_with(userData).returns({
+            login  = "9915e49a-4de1-41aa-9d7d-c9a687ec048d",
+            url    = "mock-server",
+            email  = "info@example.com",
+            create = "",
+            pass   = "",
+        })
+        local send_list = require 'send_list'
         assert.True(send_list)
     end)
 
     it("База данных недоступна", function()
-        local redis = {
-            connect1 = function(ip, port)
-                return nil, "Fail to connect"
-            end
-        }
-
-        package.loaded.redis = nil
-        package.preload['redis'] = function ()
-            return redis
-        end
-
-        package.loaded.send_list = nil
+        _G.arg = {}
         local send_list, err = pcall(require, 'send_list')
         assert.False(send_list)
     end)
 
     it("Пользователь не найден", function()
-        local client = {
-            get = function(value)
-                return nil
-            end,
+        _G.arg = {
+            "127.0.0.1",
+            "6379",
+            "not_user"
         }
-        local redis = {
-            connect = function(ip, port)
-                return client
-            end
-        }
-        local mockRedis = mock(redis)
-        local mockClient = mock(client)
-
-        package.loaded.redis = nil
-        package.preload['redis'] = function ()
-            return redis
-        end
-
-        package.loaded.send_list = nil
         local send_list, err = pcall(require, 'send_list')
-
-        assert.spy(mockRedis.connect).was.called_with("127.0.0.1", 6379)
-        assert.spy(mockClient.get).was.called_with(mockClient, "user:9915e49a-4de1-41aa-9d7d-c9a687ec048d")
         assert.False(send_list)
     end)
 
     it("Данные пользователя повреждены", function()
-        local client = {
-            get = function(value)
-                return userData
-            end,
-        }
-        local redis = {
-            connect = function(ip, port)
-                return client
-            end
-        }
-        local mockRedis = mock(redis)
-        local mockClient = mock(client)
-
-        package.loaded.redis = nil
-        package.preload['redis'] = function ()
-            return redis
-        end
-
-        local cjson = {
-            decode = function(value)
-                return nil
-            end
-        }
-        local mockCjson = mock(cjson)
-        package.loaded.cjson = nil
-        package.preload['cjson'] = function ()
-            return cjson
-        end
-
+        mockClient.get.on_call_with(mockClient, "user:9915e49a-4de1-41aa-9d7d-c9a687ec048d").returns(userData)
+        mockCjson.decode.on_call_with(userData).returns(nil)
         local send_list, err = pcall(require, 'send_list')
 
         assert.False(send_list)

@@ -9,9 +9,10 @@ local redis_ip   = arg[1]
 local redis_port = tonumber(arg[2])
 local uuid       = arg[3]
 
-local ok, client = pcall(redis.connect, redis_ip, redis_port)
-if not ok then
-   error("Redis connect fail")
+
+local client, err = redis.connect(redis_ip, redis_port)
+if not client then
+    error("Redis connect fail")
 end
 
 local userData, err = client:get("user:" .. uuid)
@@ -19,9 +20,7 @@ if "string" ~= type(userData) then
     error("User not found")
 end
 
-local jsonErr, data = pcall(json.decode, userData)
-if not jsonErr then
+local data = json.decode(userData)
+if json.null == data then
     error("fail json decode")
 end
-
-
