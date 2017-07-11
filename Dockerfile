@@ -20,6 +20,7 @@ RUN echo "@community http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /et
 
 VOLUME ["/data"]
 
+COPY build/notify-plugin-files /usr/local/sbin/notify-plugin-files
 COPY conf/rsyncd.conf /etc/rsyncd.conf
 COPY app /app
 COPY sites-enabled /sites-enabled

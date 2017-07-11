@@ -5,7 +5,18 @@ PORT = -p 8185:80
 EXPECTED = "teleport_storage: user 9915e49a-4de1-41aa-9d7d-c9a687ec048d send data='{\"url\":\"a.imega.club\",\"files\":[\"/9915e49a-4de1-41aa-9d7d-c9a687ec048d/dump.sql\"]}' to a.imega.club?mode=accept-file"
 
 build:
+	@docker run --rm \
+		-v $(CURDIR)/build:/go/bin \
+		-e GOOS=linux \
+		-e GOARCH=amd64 \
+		-e CGO_ENABLED=0 \
+		golang:1.8-alpine \
+		sh -c 'apk --upd add git && go get -u github.com/imega-teleport/notify-plugin-files'
 	@docker build -t $(TELEPORT_STORAGE) .
+
+release:
+	@docker login --username $(DOCKER_USER) --password $(DOCKER_PASS)
+	@docker push imegateleport/york
 
 push:
 	@docker push $(TELEPORT_STORAGE):latest

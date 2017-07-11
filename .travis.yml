@@ -1,0 +1,15 @@
+branches:
+  only:
+  - master
+language: ruby
+services:
+- docker
+script:
+- make build || exit 1
+after_success:
+- |
+  [ "${TRAVIS_BRANCH}" == "master" ] && [ "$TRAVIS_EVENT_TYPE" != "cron" ] &&
+    (make release DOCKER_USER=$DOCKER_USER DOCKER_PASS=$DOCKER_PASS)
+notifications:
+  slack:
+    secure: cKljC8HqoyhYyFjZdBm92mY9dR42xI7t/3tyoaIEN9DFd204+R11N7JdB0ClEgATxilvuinYkyOdScnBXBdHapREZIdskW9avoRONxQvJCT8ZkOtAHbDrVsKVv28jPdu4JiaU7hUe7wM5z6D1zP6staoPQ60pikLOtAq/XuHrGoLQfnP73j+RtVNFJusilhCytatjCpgn4DZRpulue6rEMVKUxDDPKlA1HtxyLJV2m5JHYQZjeFjOX4/puyeOgz7/c1+nG4RNrpHMzbCfghc0PT9/HBXKZRX5zpgUXWVllh/6jjFjjb3b8Nc2ZQzqcG4hbPv4qsGCBH/wF3i12wwANTvIQOrKfbhFFO1U2KtDOvDbt57g8bQv2dLACfBj5QJtXQUvycbNd95P86MJgGDYFZ+BN82+MeBZf/9etEGLm/LNQNqcymrCygnbX+8Hr/QyFqMh4xoRiIBUiXKn+9EM6+tQ605Z9W4ddVXP4Db2LBn+rfG12Y/nKWyBCWpas4s3KU7Jejs1jxKleOKQaSRYM+cAr7Jbwuny9DLK0NrKgYUJzP1t/CmR2y3yi/P29A7kXf84xd7bFD0aKq9vLSKpWgFfkMiBfR6UlM7v53NiLs/La8ADQ8hq7mt84XxEdkDF8Orza92HNqIoS1zSgunkKbic0Rq81MCCCGdJWU7gYM=
