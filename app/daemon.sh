@@ -13,7 +13,7 @@ do
         SITE=$(echo $DATA | jq '.url' | sed 's/\"//g')
 
         if test "$(ls -A "$DEST")"; then
-            notify-plugin-files -user "$UUID" -pass "$PASS" -url "$SITE/teleport?mode=accept-file" -storageUrl "http://a.imega.club/storage" -path $DEST
+            notify-plugin-files -user "$UUID" -pass "$PASS" -url "$SITE/teleport?mode=accept-file&ver=300" -storageUrl "http://a.imega.club/storage" -path $DEST
         fi
     fi
 done
