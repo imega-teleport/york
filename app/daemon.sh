@@ -7,13 +7,20 @@ inotifywait -mr -e close_write --fromfile /app/wait-list.txt | while read DEST E
 do
     UUID=`echo $(basename "$DEST")`
 
-    PASS=$(redis-cli -h teleport_data get "auth:$UUID")
-    if [ ! -z "$PASS" -a "$PASS" != " " ]; then
-        DATA=$(redis-cli -h teleport_data get "user:$UUID")
-        SITE=$(echo $DATA | jq '.url' | sed 's/\"//g')
+    CUR_QTY=`find $DEST -name '*.sql' | wc -l`
+    QTY=`echo $FILE | cut -d '.' -f1 | cut -d '_' -f3`
 
-        if test "$(ls -A "$DEST")"; then
-            notify-plugin-files -user "$UUID" -pass "$PASS" -url "$SITE/teleport?mode=accept-file&ver=300" -storageUrl "http://a.imega.club/storage" -path $DEST
+    if [[ $QTY -eq $CUR_QTY ]]; then
+
+        PASS=$(redis-cli -h teleport_data get "auth:$UUID")
+        if [ ! -z "$PASS" -a "$PASS" != " " ]; then
+            DATA=$(redis-cli -h teleport_data get "user:$UUID")
+            SITE=$(echo $DATA | jq '.url' | sed 's/\"//g')
+
+            if test "$(ls -A "$DEST")"; then
+                notify-plugin-files -user "$UUID" -pass "$PASS" -url "$SITE/teleport?mode=accept-file&ver=300" -storageUrl "http://a.imega.club/storage" -path $DEST
+            fi
         fi
+
     fi
 done
